@@ -45,3 +45,8 @@ supabase/.env.local
 
 # Next.js env
 web/.env.local
+.env
+.env.local
+.env.*.local
+.DS_Store
+.tool-versions

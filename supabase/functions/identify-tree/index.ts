@@ -1,3 +1,4 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2?target=deno";
 
 // Minimal, robust handler for: POST { imageUrl, lat?, lng?, organ? }
 // Returns: { name, confidence, features }
@@ -36,6 +37,16 @@ Deno.serve(async (req) => {
   }
 
   const imageUrl = body?.imageUrl as string | undefined
+  let normalizedImageUrl = imageUrl;
+
+// If the client sends a localhost URL, Docker can't reach it.
+// Rewrite to host.docker.internal so the container can reach your Mac.
+  normalizedImageUrl = normalizedImageUrl
+  .replace("http://127.0.0.1:54321", "http://host.docker.internal:54321")
+  .replace("http://localhost:54321", "http://host.docker.internal:54321");
+  
+  const lat = typeof body?.lat === "number" ? body.lat : null
+  const lng = typeof body?.lng === "number" ? body.lng : null
 
   if (!imageUrl || typeof imageUrl !== "string") {
     return new Response(JSON.stringify({ error: "Missing required field: imageUrl" }), {
@@ -51,6 +62,20 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     })
   }
+
+  const SUPABASE_URL = Deno.env.get("SUPABASE_URL")
+  const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
+
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    return new Response(JSON.stringify({ error: "Server misconfigured: missing Supabase env" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    })
+  }
+
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { persistSession: false },
+  })
 
   // Get optional organ parameter (default to "leaf")
   const organ = (body?.organ as string) || "leaf"
@@ -72,7 +97,7 @@ Deno.serve(async (req) => {
 
     let imgRes
     try {
-      imgRes = await fetch(imageUrl, { signal: controller.signal })
+      imgRes = await fetch(normalizedImageUrl, { signal: controller.signal })
     } catch (fetchErr) {
       clearTimeout(timeoutId)
       if (fetchErr instanceof Error && fetchErr.name === "AbortError") {
@@ -116,7 +141,8 @@ Deno.serve(async (req) => {
     form.append("images", imgBlob, `tree.${extension}`)
     form.append("organs", organ)
 
-    const plantNetUrl = "https://my-api.plantnet.org/v2/identify/all"
+    const project = "k-world-flora"
+    const plantNetUrl = `https://my-api.plantnet.org/v2/identify/${project}?api-key=${encodeURIComponent(apiKey)}`
 
     const plantNetController = new AbortController()
     const plantNetTimeoutId = setTimeout(() => plantNetController.abort(), 30000) // 30 second timeout
@@ -125,9 +151,6 @@ Deno.serve(async (req) => {
     try {
       idRes = await fetch(plantNetUrl, {
         method: "POST",
-        headers: {
-          "Api-Key": apiKey,
-        },
         body: form,
         signal: plantNetController.signal,
       })
@@ -170,8 +193,37 @@ Deno.serve(async (req) => {
     // For MVP, return a placeholder list; later we can compute features from tags/metadata or a second pass.
     const features: string[] = []
 
+    // 4) Store result in database
+    const { data, error } = await supabase
+      .from("trees")
+      .insert({
+        image_path: imageUrl, // MVP: store URL as path for now
+        image_url: imageUrl,
+        lat,
+        lng,
+        identified_name: name,
+        confidence,
+        features,
+      })
+      .select("id, created_at")
+      .single()
+
+    if (error) {
+      return new Response(
+        JSON.stringify({ error: "DB insert failed", details: error }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      )
+    }
+
     return new Response(
-      JSON.stringify({ name, confidence, features, rawTop: best }),
+      JSON.stringify({
+        id: data.id,
+        created_at: data.created_at,
+        name,
+        confidence,
+        features,
+        rawTop: best,
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     )
   } catch (err) {
