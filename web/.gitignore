@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Supabase local secrets
+supabase/.env.local
+
+# Next.js env
+web/.env.local
