@@ -1,0 +1,8 @@
+# macOS
+.DS_Store
+
+# Supabase local secrets
+supabase/.env.local
+
+# Next.js local env
+web/.env.local
