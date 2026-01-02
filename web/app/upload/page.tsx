@@ -162,20 +162,115 @@ export default function UploadPage() {
                 )}
 
                 {identifyResult && (
-                    <div className="space-y-2 rounded bg-green-50 p-4 border border-green-200">
-                        <h2 className="text-lg font-semibold text-green-900">Tree Identified!</h2>
-                        <div className="space-y-1">
-                            <p className="text-sm">
-                                <span className="font-medium">Name:</span> {identifyResult.name}
-                            </p>
+                    <div className="space-y-4 rounded bg-green-50 p-4 border border-green-200">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-lg font-semibold text-green-900">Tree Identified!</h2>
+                            <a className="underline text-sm text-green-900 hover:text-green-700" href="/log">
+                                View Tree Log
+                            </a>
+                        </div>
+
+                        <div className="space-y-2">
+                            {/* Common Name */}
+                            <div>
+                                <p className="text-base font-medium text-green-900">
+                                    {identifyResult.name}
+                                </p>
+                                {identifyResult.scientificName && (
+                                    <p className="text-sm italic text-gray-700">
+                                        {identifyResult.scientificName}
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Confidence */}
                             {identifyResult.confidence !== null && (
                                 <p className="text-sm">
                                     <span className="font-medium">Confidence:</span>{" "}
                                     {(identifyResult.confidence * 100).toFixed(1)}%
                                 </p>
                             )}
-                            <p className="text-sm text-gray-600">
-                                <span className="font-medium">ID:</span> {identifyResult.id}
+
+                            {/* Taxonomy */}
+                            {(identifyResult.genus || identifyResult.family) && (
+                                <div className="text-sm">
+                                    {identifyResult.family && (
+                                        <p>
+                                            <span className="font-medium">Family:</span>{" "}
+                                            <span className="italic">{identifyResult.family}</span>
+                                        </p>
+                                    )}
+                                    {identifyResult.genus && (
+                                        <p>
+                                            <span className="font-medium">Genus:</span>{" "}
+                                            <span className="italic">{identifyResult.genus}</span>
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Alternative Common Names */}
+                            {identifyResult.commonNames && identifyResult.commonNames.length > 1 && (
+                                <div className="text-sm">
+                                    <span className="font-medium">Also known as:</span>{" "}
+                                    {identifyResult.commonNames.slice(1).join(", ")}
+                                </div>
+                            )}
+
+                            {/* Conservation Status */}
+                            {identifyResult.iucnCategory && (
+                                <div className="text-sm">
+                                    <span className="font-medium">IUCN Status:</span>{" "}
+                                    <span className="px-2 py-1 rounded bg-green-100 text-green-800 text-xs font-medium">
+                                        {identifyResult.iucnCategory}
+                                    </span>
+                                </div>
+                            )}
+
+                            {/* External Links */}
+                            <div className="flex gap-3 text-xs">
+                                {identifyResult.gbifId && (
+                                    <a
+                                        href={`https://www.gbif.org/species/${identifyResult.gbifId}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-blue-600 hover:underline"
+                                    >
+                                        View on GBIF →
+                                    </a>
+                                )}
+                                {identifyResult.powoId && (
+                                    <a
+                                        href={`https://powo.science.kew.org/taxon/${identifyResult.powoId}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-blue-600 hover:underline"
+                                    >
+                                        View on POWO →
+                                    </a>
+                                )}
+                            </div>
+
+                            {/* Reference Images */}
+                            {identifyResult?.referenceImages?.length > 0 && (
+                                <div>
+                                    <p className="text-sm font-medium mb-2">Reference Images:</p>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {identifyResult.referenceImages.slice(0, 6).map((img: any, i: number) => (
+                                            <img
+                                                key={i}
+                                                src={img.url}
+                                                alt="Reference"
+                                                className="h-24 w-full rounded object-cover"
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Database ID */}
+                            <p className="text-xs text-gray-500 pt-2 border-t border-green-200">
+                                Record ID: {identifyResult.id}
                             </p>
                         </div>
                     </div>

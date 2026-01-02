@@ -142,7 +142,13 @@ Deno.serve(async (req) => {
     form.append("organs", organ)
 
     const project = "k-world-flora"
-    const plantNetUrl = `https://my-api.plantnet.org/v2/identify/${project}?api-key=${encodeURIComponent(apiKey)}`
+    // add these query params:
+    const plantNetUrl =
+    `https://my-api.plantnet.org/v2/identify/${project}` +
+    `?api-key=${encodeURIComponent(apiKey)}` +
+    `&include-related-images=true` +
+    `&nb-results=3` +
+    `&lang=en`
 
     const plantNetController = new AbortController()
     const plantNetTimeoutId = setTimeout(() => plantNetController.abort(), 30000) // 30 second timeout
@@ -181,17 +187,46 @@ Deno.serve(async (req) => {
 
     // 3) Extract best match (PlantNet returns results[] with score)
     const best = raw?.results?.[0]
-    const name =
-      best?.species?.commonNames?.[0] ||
-      best?.species?.scientificNameWithoutAuthor ||
-      best?.species?.scientificName ||
+
+    // Extract detailed plant information
+    const commonName =
+      best?.species?.commonNames?.[0] ??
+      best?.species?.scientificNameWithoutAuthor ??
+      best?.species?.scientificName ??
       "Unknown"
+
+    const scientificName =
+      best?.species?.scientificNameWithoutAuthor ??
+      best?.species?.scientificName ??
+      null
+
+    const genus = best?.species?.genus?.scientificNameWithoutAuthor ?? null
+    const family = best?.species?.family?.scientificNameWithoutAuthor ?? null
+    const commonNames = Array.isArray(best?.species?.commonNames) ? best.species.commonNames : []
+
+    const gbifId = best?.gbif?.id ? String(best.gbif.id) : null
+    const powoId = best?.powo?.id ? String(best.powo.id) : null
+    const iucnCategory = best?.iucn?.category ? String(best.iucn.category) : null
 
     const confidence = typeof best?.score === "number" ? best.score : null
 
     // PlantNet doesn't directly return "features" in a friendly way.
     // For MVP, return a placeholder list; later we can compute features from tags/metadata or a second pass.
     const features: string[] = []
+
+    // Extract reference images from PlantNet response
+    const referenceImages =
+      Array.isArray(best?.images)
+        ? best.images.slice(0, 6).map((img: any) => ({
+            url: img?.url?.m ?? img?.url?.o ?? img?.url?.s, // use medium first
+            urlSmall: img?.url?.s ?? null,
+            urlOriginal: img?.url?.o ?? null,
+            organ: img?.organ ?? null,
+            author: img?.author ?? null,
+            license: img?.license ?? null,
+            citation: img?.citation ?? null,
+          })).filter((x: any) => x.url)
+        : []
 
     // 4) Store result in database
     const { data, error } = await supabase
@@ -201,7 +236,14 @@ Deno.serve(async (req) => {
         image_url: imageUrl,
         lat,
         lng,
-        identified_name: name,
+        identified_name: commonName,
+        scientific_name: scientificName,
+        genus,
+        family,
+        common_names: commonNames,
+        gbif_id: gbifId,
+        powo_id: powoId,
+        iucn_category: iucnCategory,
         confidence,
         features,
       })
@@ -219,9 +261,18 @@ Deno.serve(async (req) => {
       JSON.stringify({
         id: data.id,
         created_at: data.created_at,
-        name,
+        name: commonName,
+        commonName,
+        scientificName,
+        genus,
+        family,
+        commonNames,
+        gbifId,
+        powoId,
+        iucnCategory,
         confidence,
         features,
+        referenceImages,
         rawTop: best,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
