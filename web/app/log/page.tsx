@@ -4,61 +4,68 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 
-type TreeRow = {
-  id: string;
-  created_at: string;
-  image_url: string | null;
-  identified_name: string | null;
-  scientific_name: string | null;
-  confidence: number | null;
+type TreeLogRow = {
+  key: string;
+  name: string;
+  sightings_count: number;
+  last_seen: string;
+  thumbnail_url: string | null;
 };
 
+function formatLastSeen(lastSeen: string | null) {
+  if (!lastSeen) return "—";
+  const d = new Date(lastSeen);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleString();
+}
+
 export default function LogPage() {
-  const [rows, setRows] = useState<TreeRow[]>([]);
+  const [rows, setRows] = useState<TreeLogRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+
     async function load() {
       setLoading(true);
       setError(null);
 
       const { data, error } = await supabase
-        .from("trees")
-        .select("id, created_at, image_url, identified_name, scientific_name, confidence")
-        .order("created_at", { ascending: false })
-        .limit(50);
+        .from("tree_log")
+        .select("key,name,sightings_count,last_seen,thumbnail_url")
+        .order("last_seen", { ascending: false });
 
-      console.log("Supabase query result:", { data, error });
+      if (cancelled) return;
 
       if (error) {
-        console.error("Error loading trees:", error);
         setError(error.message);
         setRows([]);
       } else {
-        console.log("Loaded trees:", data);
-        setRows((data ?? []) as TreeRow[]);
+        setRows((data as TreeLogRow[]) ?? []);
       }
 
       setLoading(false);
     }
 
     load();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (
     <div className="min-h-screen bg-zinc-50 px-6 py-10">
       <div className="mx-auto w-full max-w-3xl">
         <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">Tree Log</h1>
-          <div className="flex gap-3">
-            <Link className="text-sm underline" href="/upload">
-              Add new
-            </Link>
-            <Link className="text-sm underline" href="/">
-              Home
-            </Link>
-          </div>
+          <h1 className="text-2xl font-semibold text-zinc-900">My Plant Log</h1>
+
+          <Link
+            href="/upload"
+            className="rounded-md bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+          >
+            Upload
+          </Link>
         </div>
 
         {loading && (
@@ -67,59 +74,74 @@ export default function LogPage() {
           </div>
         )}
 
-        {error && (
+        {!loading && error && (
           <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             Error loading log: {error}
           </div>
         )}
 
         {!loading && !error && rows.length === 0 && (
-          <div className="rounded-lg border bg-white p-6 text-sm text-zinc-600">
-            No trees logged yet. Go to <Link className="underline" href="/upload">Upload</Link> to add one.
+          <div className="rounded-lg border bg-white p-6">
+            <div className="text-zinc-900 font-medium">No plants logged yet.</div>
+            <div className="mt-1 text-sm text-zinc-600">
+              Go to <Link className="underline" href="/upload">Upload</Link> to add one.
+            </div>
           </div>
         )}
 
-        <ul className="space-y-3">
-          {rows.map((t) => (
-            <li key={t.id} className="rounded-xl border bg-white p-3">
-              <div className="flex gap-3">
-                <div className="h-16 w-16 overflow-hidden rounded-lg bg-zinc-100">
-                  {t.image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={t.image_url}
-                      alt=""
-                      className="h-full w-full object-cover"
-                    />
-                  ) : null}
-                </div>
+        {!loading && !error && rows.length > 0 && (
+          <ul className="space-y-3">
+            {rows.map((p) => {
+              const thumb = p.thumbnail_url;
+              const name = p.name || "Unknown plant";
+              const count = p.sightings_count;
 
-                <div className="flex-1">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="font-medium">
-                        {t.identified_name ?? "Unknown"}
+              return (
+                <li key={p.key}>
+                  <Link
+                    href={`/plants/${encodeURIComponent(p.key)}`}
+                    className="block rounded-lg border bg-white p-4 transition-colors hover:bg-zinc-50"
+                  >
+                    <div className="flex gap-4">
+                      <div className="h-16 w-16 shrink-0 overflow-hidden rounded-md bg-zinc-100">
+                        {thumb ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={thumb}
+                            alt="Plant thumbnail"
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-xs text-zinc-500">
+                            No image
+                          </div>
+                        )}
                       </div>
-                      <div className="text-sm text-zinc-600 italic">
-                        {t.scientific_name ?? ""}
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="truncate text-base font-semibold text-zinc-900">
+                              {name}
+                            </div>
+                          </div>
+
+                          <div className="shrink-0 rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-medium text-zinc-700">
+                            {count} {count === 1 ? "sighting" : "sightings"}
+                          </div>
+                        </div>
+
+                        <div className="mt-2 text-xs text-zinc-500">
+                          Last seen: {formatLastSeen(p.last_seen)}
+                        </div>
                       </div>
                     </div>
-
-                    {typeof t.confidence === "number" && (
-                      <div className="rounded-full bg-zinc-100 px-2 py-1 text-xs text-zinc-700">
-                        {(t.confidence * 100).toFixed(1)}%
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mt-1 text-xs text-zinc-500">
-                    {new Date(t.created_at).toLocaleString()}
-                  </div>
-                </div>
-              </div>
-            </li>
-          ))}
-        </ul>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </div>
     </div>
   );
