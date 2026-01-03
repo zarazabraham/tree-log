@@ -32,7 +32,7 @@ export default function LogPage() {
       setError(null);
 
       const { data, error } = await supabase
-        .from("tree_log")
+        .from("plant_log")
         .select("key,name,sightings_count,last_seen,thumbnail_url")
         .order("last_seen", { ascending: false });
 
