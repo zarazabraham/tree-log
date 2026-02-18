@@ -3,6 +3,8 @@
 
 # Supabase local secrets
 supabase/.env.local
+supabase/functions/.env
+supabase/.temp/
 
 # Next.js local env
 web/.env.local
