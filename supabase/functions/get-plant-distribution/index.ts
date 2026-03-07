@@ -100,10 +100,10 @@ function fetchWithTimeout(url: string, timeoutMs: number): Promise<Response> {
 }
 
 // Query GBIF occurrence facets to find which US states this species has records in
-async function fetchStatesFromGbif(gbifId: string): Promise<string[]> {
+async function fetchStatesFromGbif(scientificName: string): Promise<string[]> {
   const url =
     `https://api.gbif.org/v1/occurrence/search` +
-    `?taxonKey=${encodeURIComponent(gbifId)}` +
+    `?scientificName=${encodeURIComponent(scientificName)}` +
     `&country=US&facet=stateProvince&facetLimit=60&limit=0`;
 
   const res = await fetchWithTimeout(url, 15_000);
@@ -152,19 +152,19 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // 1. Look up gbif_id for each plant key from the plants table
+    // 1. Look up scientific_name for each plant key from the plants table
     const { data: plants, error: plantsErr } = await admin
       .from("plants")
-      .select("key, gbif_id")
+      .select("key, scientific_name")
       .in("key", plantKeys);
 
     if (plantsErr) {
       return jsonResponse({ error: "DB lookup failed", details: plantsErr }, 500);
     }
 
-    const gbifMap: Record<string, string> = {};
+    const scientificNameMap: Record<string, string> = {};
     for (const p of plants ?? []) {
-      if (p.gbif_id) gbifMap[p.key] = String(p.gbif_id);
+      if (p.scientific_name) scientificNameMap[p.key] = p.scientific_name;
     }
 
     // 2. Check cache for all requested keys
@@ -193,16 +193,16 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      const gbifId = gbifMap[plantKey];
-      if (!gbifId) {
-        // No GBIF ID — can't determine distribution, return empty
+      const scientificName = scientificNameMap[plantKey];
+      if (!scientificName) {
+        // No scientific name — can't determine distribution, return empty
         results.push({ plantKey, regionIds: [] });
         toUpsert.push({ plant_key: plantKey, region_ids: [], fetched_at: new Date().toISOString() });
         continue;
       }
 
-      // Fetch from GBIF
-      const stateNames = await fetchStatesFromGbif(gbifId);
+      // Fetch from GBIF using scientific name
+      const stateNames = await fetchStatesFromGbif(scientificName);
       const regionIds = stateNamesToRegionIds(stateNames);
 
       results.push({ plantKey, regionIds });
