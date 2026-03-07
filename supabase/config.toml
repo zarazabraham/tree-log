@@ -12,6 +12,6 @@ entrypoint = "./functions/identify-tree/index.ts"
 
 [functions.get-regional-flora]
 enabled = true
-verify_jwt = true
+verify_jwt = false
 import_map = "./functions/get-regional-flora/deno.json"
 entrypoint = "./functions/get-regional-flora/index.ts"
