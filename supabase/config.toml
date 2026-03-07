@@ -15,3 +15,9 @@ enabled = true
 verify_jwt = false
 import_map = "./functions/get-regional-flora/deno.json"
 entrypoint = "./functions/get-regional-flora/index.ts"
+
+[functions.get-plant-distribution]
+enabled = true
+verify_jwt = false
+import_map = "./functions/get-plant-distribution/deno.json"
+entrypoint = "./functions/get-plant-distribution/index.ts"
