@@ -196,12 +196,13 @@ export default function PlantDetailPage() {
         .eq("key_lc", keyLc)
         .maybeSingle();
 
-        // DEBUG: what did Supabase actually return?
-        console.log("plantKey:", plantKey);
-        console.log("plantErr:", plantErr);
-        console.log("plantData:", plantData);
-
       if (cancelled) return;
+
+      if (plantErr) {
+        setError(`Error loading plants: ${plantErr.message}`);
+        setLoading(false);
+        return;
+      }
 
       setPlant((plantData as PlantRow) ?? null);
 

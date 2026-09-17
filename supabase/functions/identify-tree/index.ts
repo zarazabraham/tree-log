@@ -18,7 +18,10 @@ function slugifyKey(s: string) {
     .replace(/[^a-z0-9-]/g, "");
 }
 
-// Create admin client with service role key for database operations
+// Create admin client with service role key for database operations.
+// The 127.0.0.1/localhost -> host.docker.internal rewrite below is local-dev
+// only: the function runs inside Docker, where 127.0.0.1 is the container.
+// Against a hosted https://<ref>.supabase.co URL both replaces are no-ops.
 const rawSupabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const supabaseUrl = rawSupabaseUrl
   .replace("http://127.0.0.1:54321", "http://host.docker.internal:54321")
@@ -76,8 +79,8 @@ Deno.serve(async (req) => {
     });
   }
 
-  // If the client sends a localhost URL, Docker can't reach it.
-  // Rewrite to host.docker.internal so the container can reach your Mac.
+  // Same local-dev rewrite for the image URL: a 127.0.0.1 URL from the client
+  // resolves to the container, not your Mac. No-op for hosted storage URLs.
   const normalizedImageUrl = imageUrl
     .replace("http://127.0.0.1:54321", "http://host.docker.internal:54321")
     .replace("http://localhost:54321", "http://host.docker.internal:54321");
@@ -233,25 +236,6 @@ Deno.serve(async (req) => {
     
       "unknown";
     const plantKey = slugifyKey(String(rawKey));
-    const plantKeyLc = plantKey
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, "-");
-
-    await admin.from("plants").upsert(
-      {
-        key: plantKey,
-        key_lc: plantKeyLc,
-        common_name: commonName,
-        scientific_name: scientificName,
-        family,
-        genus,
-        reference_images: referenceImages,
-        plant_details: best,
-      },
-      { onConflict: "key" }
-    );
-
     // 4) Upsert into plants table
     const { data: plantData, error: plantError } = await admin
       .from("plants")
