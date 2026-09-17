@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Plantydex uses your location to show how many plant species exist in your region.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>This app needs to access your local network to connect to your Supabase development server.</string>
+	<key>SB_ANON_KEY</key>
+	<string>sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH</string>
+	<key>SB_URL</key>
+	<string>http://192.168.86.28:54321</string>
+</dict>
+</plist>

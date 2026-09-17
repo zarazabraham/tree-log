@@ -1,0 +1,14 @@
+# macOS
+.DS_Store
+
+# Xcode user state
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+
+# Build output
+build/
+DerivedData/
+
+# Local Supabase config (URL + key). Copy Config.example.xcconfig to Config.xcconfig.
+Config.xcconfig

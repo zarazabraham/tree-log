@@ -1,0 +1,14 @@
+//
+//  Config.example.xcconfig
+//  Plantydex
+//
+//  Copy this file to Config.xcconfig and fill in your values.
+//  Config.xcconfig is gitignored so local endpoints stay out of version control.
+//
+//  Local development: point SB_URL at your machine's LAN IP so a device on the
+//  same network can reach `supabase start` (127.0.0.1 only works in the simulator).
+//  Hosted: https://<project-ref>.supabase.co
+//
+
+SB_URL=http://127.0.0.1:54321
+SB_ANON_KEY=your_publishable_anon_key_here
