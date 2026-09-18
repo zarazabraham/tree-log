@@ -8,17 +8,16 @@
 
 /* Begin PBXBuildFile section */
 		2C2981442F5CB428007EE48A /* LocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C2981432F5CB428007EE48A /* LocationManager.swift */; };
-		2C2981462F5CB4FD007EE48A /* RegionalProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C2981452F5CB4FD007EE48A /* RegionalProgressView.swift */; };
 		2C2981482F5CB8AD007EE48A /* RegionalProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C2981472F5CB8AD007EE48A /* RegionalProgressView.swift */; };
 		2C29814A2F5CB8B5007EE48A /* USRegions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C2981492F5CB8B5007EE48A /* USRegions.swift */; };
-		2C29814C2F5CBDB6007EE48A /* RegionalProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C29814B2F5CBDB6007EE48A /* RegionalProgressView.swift */; };
 		2C29814E2F5CBDBF007EE48A /* RegionDiscoveryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C29814D2F5CBDBF007EE48A /* RegionDiscoveryView.swift */; };
 		2C7C28C82F08D1E200CF9066 /* Config.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 2C7C28C72F08D1D600CF9066 /* Config.xcconfig */; };
-		2C7C28CA2F08D3D000CF9066 /* SupabaseAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C7C28C92F08D3C000CF9066 /* SupabaseAPI.swift */; };
+		2C7C28CA2F08D3D000CF9066 /* SupabaseConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C7C28C92F08D3C000CF9066 /* SupabaseConfig.swift */; };
 		2C7C28CC2F08D40200CF9066 /* PlantLogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C7C28CB2F08D3F900CF9066 /* PlantLogView.swift */; };
 		2C7C28D62F09B9EC00CF9066 /* PlantUploadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C7C28D52F09B9EC00CF9066 /* PlantUploadView.swift */; };
 		2C7C28D82F09BCF600CF9066 /* PlantDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C7C28D72F09BCF600CF9066 /* PlantDetailView.swift */; };
 		2C7C28DA2F0B499A00CF9066 /* AddPlantView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C7C28D92F0B499A00CF9066 /* AddPlantView.swift */; };
+		2CAA00042F5D000000000004 /* IdentifyFlowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CAA00032F5D000000000003 /* IdentifyFlowView.swift */; };
 		2CA0729F2F106749006515E5 /* DSButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CA0728A2F106749006515E5 /* DSButton.swift */; };
 		2CA072A02F106749006515E5 /* RadiiTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CA072982F106749006515E5 /* RadiiTokens.swift */; };
 		2CA072A12F106749006515E5 /* DSTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CA072912F106749006515E5 /* DSTextField.swift */; };
@@ -40,18 +39,17 @@
 
 /* Begin PBXFileReference section */
 		2C2981432F5CB428007EE48A /* LocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationManager.swift; sourceTree = "<group>"; };
-		2C2981452F5CB4FD007EE48A /* RegionalProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegionalProgressView.swift; sourceTree = "<group>"; };
 		2C2981472F5CB8AD007EE48A /* RegionalProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegionalProgressView.swift; sourceTree = "<group>"; };
 		2C2981492F5CB8B5007EE48A /* USRegions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = USRegions.swift; sourceTree = "<group>"; };
-		2C29814B2F5CBDB6007EE48A /* RegionalProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegionalProgressView.swift; sourceTree = "<group>"; };
 		2C29814D2F5CBDBF007EE48A /* RegionDiscoveryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegionDiscoveryView.swift; sourceTree = "<group>"; };
 		2C7C28B82F08D14A00CF9066 /* Plantydex.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Plantydex.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2C7C28C72F08D1D600CF9066 /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
-		2C7C28C92F08D3C000CF9066 /* SupabaseAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseAPI.swift; sourceTree = "<group>"; };
+		2C7C28C92F08D3C000CF9066 /* SupabaseConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseConfig.swift; sourceTree = "<group>"; };
 		2C7C28CB2F08D3F900CF9066 /* PlantLogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlantLogView.swift; sourceTree = "<group>"; };
 		2C7C28D52F09B9EC00CF9066 /* PlantUploadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlantUploadView.swift; sourceTree = "<group>"; };
 		2C7C28D72F09BCF600CF9066 /* PlantDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlantDetailView.swift; sourceTree = "<group>"; };
 		2C7C28D92F0B499A00CF9066 /* AddPlantView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddPlantView.swift; sourceTree = "<group>"; };
+		2CAA00032F5D000000000003 /* IdentifyFlowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdentifyFlowView.swift; sourceTree = "<group>"; };
 		2CA0728A2F106749006515E5 /* DSButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DSButton.swift; sourceTree = "<group>"; };
 		2CA0728B2F106749006515E5 /* DSCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DSCard.swift; sourceTree = "<group>"; };
 		2CA0728C2F106749006515E5 /* DSEmptyState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DSEmptyState.swift; sourceTree = "<group>"; };
@@ -82,6 +80,16 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		2CAA00012F5D000000000001 /* Models */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Models;
+			sourceTree = "<group>";
+		};
+		2CAA00022F5D000000000002 /* Services */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Services;
+			sourceTree = "<group>";
+		};
 		2C7C28BA2F08D14A00CF9066 /* Plantydex */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
@@ -107,20 +115,21 @@
 			isa = PBXGroup;
 			children = (
 				2C29814D2F5CBDBF007EE48A /* RegionDiscoveryView.swift */,
-				2C29814B2F5CBDB6007EE48A /* RegionalProgressView.swift */,
 				2C2981492F5CB8B5007EE48A /* USRegions.swift */,
 				2C2981472F5CB8AD007EE48A /* RegionalProgressView.swift */,
-				2C2981452F5CB4FD007EE48A /* RegionalProgressView.swift */,
 				2C2981432F5CB428007EE48A /* LocationManager.swift */,
 				2CA0729E2F106749006515E5 /* DesignSystem */,
 				2C7C28D92F0B499A00CF9066 /* AddPlantView.swift */,
+				2CAA00032F5D000000000003 /* IdentifyFlowView.swift */,
 				2C7C28D72F09BCF600CF9066 /* PlantDetailView.swift */,
 				2C7C28D52F09B9EC00CF9066 /* PlantUploadView.swift */,
 				2C7C28C72F08D1D600CF9066 /* Config.xcconfig */,
 				2C7C28CB2F08D3F900CF9066 /* PlantLogView.swift */,
+				2CAA00012F5D000000000001 /* Models */,
+				2CAA00022F5D000000000002 /* Services */,
 				2C7C28BA2F08D14A00CF9066 /* Plantydex */,
 				2C7C28B92F08D14A00CF9066 /* Products */,
-				2C7C28C92F08D3C000CF9066 /* SupabaseAPI.swift */,
+				2C7C28C92F08D3C000CF9066 /* SupabaseConfig.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -196,6 +205,8 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
+				2CAA00012F5D000000000001 /* Models */,
+				2CAA00022F5D000000000002 /* Services */,
 				2C7C28BA2F08D14A00CF9066 /* Plantydex */,
 			);
 			name = Plantydex;
@@ -230,7 +241,6 @@
 			mainGroup = 2C7C28AF2F08D14A00CF9066;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				2C7C28C62F08D1C300CF9066 /* XCRemoteSwiftPackageReference "supabase-swift" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 2C7C28B92F08D14A00CF9066 /* Products */;
@@ -261,6 +271,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				2C7C28DA2F0B499A00CF9066 /* AddPlantView.swift in Sources */,
+				2CAA00042F5D000000000004 /* IdentifyFlowView.swift in Sources */,
 				2CA0729F2F106749006515E5 /* DSButton.swift in Sources */,
 				2CA072A02F106749006515E5 /* RadiiTokens.swift in Sources */,
 				2C29814E2F5CBDBF007EE48A /* RegionDiscoveryView.swift in Sources */,
@@ -273,16 +284,14 @@
 				2C29814A2F5CB8B5007EE48A /* USRegions.swift in Sources */,
 				2CA072A52F106749006515E5 /* MotionTokens.swift in Sources */,
 				2CA072A62F106749006515E5 /* DSImagePicker.swift in Sources */,
-				2C29814C2F5CBDB6007EE48A /* RegionalProgressView.swift in Sources */,
 				2CA072A72F106749006515E5 /* Theme.swift in Sources */,
 				2CA072A82F106749006515E5 /* SpacingTokens.swift in Sources */,
-				2C2981462F5CB4FD007EE48A /* RegionalProgressView.swift in Sources */,
 				2CA072A92F106749006515E5 /* TypographyTokens.swift in Sources */,
 				2CA072AA2F106749006515E5 /* DSCard.swift in Sources */,
 				2CA072AB2F106749006515E5 /* ColorTokens.swift in Sources */,
 				2CA072AC2F106749006515E5 /* DSListRow.swift in Sources */,
 				2CA072AD2F106749006515E5 /* DSErrorState.swift in Sources */,
-				2C7C28CA2F08D3D000CF9066 /* SupabaseAPI.swift in Sources */,
+				2C7C28CA2F08D3D000CF9066 /* SupabaseConfig.swift in Sources */,
 				2C7C28D82F09BCF600CF9066 /* PlantDetailView.swift in Sources */,
 				2C7C28CC2F08D40200CF9066 /* PlantLogView.swift in Sources */,
 				2C7C28D62F09B9EC00CF9066 /* PlantUploadView.swift in Sources */,
@@ -346,7 +355,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -405,7 +414,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
@@ -420,6 +429,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Plantydex/Plantydex.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 4336D7X44A;
@@ -456,6 +466,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Plantydex/Plantydex.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 4336D7X44A;
@@ -509,17 +520,6 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
-
-/* Begin XCRemoteSwiftPackageReference section */
-		2C7C28C62F08D1C300CF9066 /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/supabase/supabase-swift";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 2.5.1;
-			};
-		};
-/* End XCRemoteSwiftPackageReference section */
 	};
 	rootObject = 2C7C28B02F08D14A00CF9066 /* Project object */;
 }

@@ -5,119 +5,68 @@
 //  Created by Claude Code on 1/3/26.
 //
 
+import SwiftData
 import SwiftUI
 
 struct PlantDetailView: View {
     @Environment(\.theme) private var theme
-    let plantKey: String
+    @Environment(\.modelContext) private var modelContext
 
-    @State private var loading = true
-    @State private var error: String?
+    @Bindable var plant: Plant
 
-    // Data models
-    @State private var logRow: PlantLogRow?
-    @State private var plant: PlantData?
-    @State private var displayName = ""
-    @State private var notes = ""
-
-    // Edit state
     @State private var isEditing = false
-    @State private var isSaving = false
+    @State private var draftDisplayName = ""
+    @State private var draftNotes = ""
     @State private var showToast = false
-    @State private var toastMessage = ""
-
-    // Original values for cancel
-    @State private var originalDisplayName = ""
-    @State private var originalNotes = ""
 
     var body: some View {
         ScrollView {
-            if loading {
-                DSLoadingState(message: "Loading plant details...")
-            } else if let error {
-                DSErrorState(
-                    title: "Failed to Load Details",
-                    message: error,
-                    retryAction: {
-                        Task { await loadPlantDetails() }
-                    }
-                )
-            } else {
-                VStack(alignment: .leading, spacing: theme.spacing.lg) {
-                    // Header with thumbnail and summary
-                    if let logRow {
-                        headerSection(logRow: logRow)
-                            .padding(.horizontal, theme.spacing.screenEdge)
-                    }
+            VStack(alignment: .leading, spacing: theme.spacing.lg) {
+                headerSection
+                    .padding(.horizontal, theme.spacing.screenEdge)
 
-                    Divider()
-                        .padding(.horizontal, theme.spacing.screenEdge)
+                Divider()
+                    .padding(.horizontal, theme.spacing.screenEdge)
 
-                    // Notes section
-                    notesSection()
+                notesSection
+                plantDetailsSection
 
-                    // Plant details section
-                    plantDetailsSection()
-
-                    // Reference images
-                    if let plant, let images = plant.reference_images, !images.isEmpty {
-                        referenceImagesSection(images: images)
-                    }
+                if !plant.referenceImages.isEmpty {
+                    referenceImagesSection
                 }
-                .padding(.bottom, theme.spacing.screenEdge)
             }
+            .padding(.bottom, theme.spacing.screenEdge)
         }
-        .navigationTitle(logRow?.name ?? "Plant Details")
+        .navigationTitle(plant.title)
         .navigationBarTitleDisplayMode(.large)
-        .task {
-            await loadPlantDetails()
-        }
         .overlay(toastOverlay)
     }
 
     // MARK: - Sections
 
     @ViewBuilder
-    private func headerSection(logRow: PlantLogRow) -> some View {
+    private var headerSection: some View {
         HStack(alignment: .top, spacing: theme.spacing.md) {
-            // Thumbnail
-            if let thumbnailUrl = logRow.thumbnail_url {
-                AsyncImage(url: URL(string: thumbnailUrl)) { phase in
-                    switch phase {
-                    case .empty:
-                        ZStack {
-                            theme.colors.surfaceSecondary
-                            ProgressView()
-                        }
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .scaledToFill()
-                    case .failure:
-                        ZStack {
-                            theme.colors.surfaceSecondary
-                            Image(systemName: "photo")
-                                .foregroundColor(theme.colors.textTertiary)
-                        }
-                    @unknown default:
-                        theme.colors.surfaceSecondary
-                    }
-                }
-                .frame(width: 100, height: 100)
-                .clipShape(RoundedRectangle(cornerRadius: theme.radii.card))
+            if let thumbnail = plant.thumbnail, let image = UIImage(data: thumbnail) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 100, height: 100)
+                    .clipped()
+                    .clipShape(RoundedRectangle(cornerRadius: theme.radii.card))
             }
 
             VStack(alignment: .leading, spacing: theme.spacing.xs) {
-                Text(displayName.isEmpty ? (logRow.name ?? "Unknown") : displayName)
+                Text(plant.title)
                     .font(theme.typography.displaySmall)
                     .foregroundColor(theme.colors.textPrimary)
 
-                Text("\(logRow.sightings_count) \(logRow.sightings_count == 1 ? "sighting" : "sightings")")
+                Text("\(plant.sightingCount) \(plant.sightingCount == 1 ? "sighting" : "sightings")")
                     .font(theme.typography.bodyMedium)
                     .foregroundColor(theme.colors.textSecondary)
 
-                if let lastSeen = logRow.last_seen {
-                    Text("Last seen: \(formatDate(lastSeen))")
+                if let lastSeen = plant.lastSeenAt {
+                    Text("Last seen: \(lastSeen.formatted(date: .abbreviated, time: .shortened))")
                         .font(theme.typography.captionLarge)
                         .foregroundColor(theme.colors.textSecondary)
                 }
@@ -126,7 +75,7 @@ struct PlantDetailView: View {
     }
 
     @ViewBuilder
-    private func notesSection() -> some View {
+    private var notesSection: some View {
         DSCard(padding: .cardPadding) {
             VStack(alignment: .leading, spacing: theme.spacing.sm) {
                 HStack {
@@ -137,30 +86,24 @@ struct PlantDetailView: View {
                     Spacer()
 
                     if !isEditing {
-                        Button("Edit") {
-                            originalDisplayName = displayName
-                            originalNotes = notes
-                            isEditing = true
-                        }
-                        .font(theme.typography.bodySmall)
-                        .foregroundColor(theme.colors.primary)
+                        Button("Edit") { beginEditing() }
+                            .font(theme.typography.bodySmall)
+                            .foregroundColor(theme.colors.primary)
                     }
                 }
 
                 if isEditing {
-                    editingView()
+                    editingView
+                } else if let notes = plant.notes, !notes.isEmpty {
+                    Text(notes)
+                        .font(theme.typography.bodyMedium)
+                        .foregroundColor(theme.colors.textPrimary)
+                        .fixedSize(horizontal: false, vertical: true)
                 } else {
-                    if notes.isEmpty {
-                        Text("No notes yet")
-                            .font(theme.typography.bodyMedium)
-                            .foregroundColor(theme.colors.textSecondary)
-                            .italic()
-                    } else {
-                        Text(notes)
-                            .font(theme.typography.bodyMedium)
-                            .foregroundColor(theme.colors.textPrimary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
+                    Text("No notes yet")
+                        .font(theme.typography.bodyMedium)
+                        .foregroundColor(theme.colors.textSecondary)
+                        .italic()
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -168,12 +111,12 @@ struct PlantDetailView: View {
     }
 
     @ViewBuilder
-    private func editingView() -> some View {
+    private var editingView: some View {
         VStack(alignment: .leading, spacing: theme.spacing.formFieldSpacing) {
             DSTextField(
                 label: "Display Name",
                 placeholder: "Enter display name",
-                text: $displayName
+                text: $draftDisplayName
             )
 
             VStack(alignment: .leading, spacing: theme.spacing.xxs) {
@@ -181,7 +124,7 @@ struct PlantDetailView: View {
                     .font(theme.typography.captionLargeEmphasized)
                     .foregroundColor(theme.colors.textSecondary)
 
-                TextEditor(text: $notes)
+                TextEditor(text: $draftNotes)
                     .frame(minHeight: 100)
                     .padding(theme.spacing.xs)
                     .background(theme.colors.surfaceSecondary)
@@ -193,53 +136,31 @@ struct PlantDetailView: View {
             }
 
             HStack(spacing: theme.spacing.sm) {
-                DSButton("Cancel", style: .secondary) {
-                    displayName = originalDisplayName
-                    notes = originalNotes
-                    isEditing = false
-                }
-
-                DSButton("Save", style: .primary, isLoading: isSaving) {
-                    Task {
-                        await saveChanges()
-                    }
-                }
+                DSButton("Cancel", style: .secondary) { isEditing = false }
+                DSButton("Save", style: .primary) { save() }
             }
         }
     }
 
     @ViewBuilder
-    private func plantDetailsSection() -> some View {
+    private var plantDetailsSection: some View {
         DSCard(padding: .cardPadding) {
             VStack(alignment: .leading, spacing: theme.spacing.sm) {
                 Text("Plant Details")
                     .font(theme.typography.headingMedium)
                     .foregroundColor(theme.colors.textPrimary)
 
-                if let plant {
-                    // Common name
-                    if let commonName = plant.common_name {
-                        detailField(label: "Common Name", value: commonName, isItalic: false)
-                    }
-
-                    // Scientific name
-                    if let scientific = plant.scientific_name {
-                        detailField(label: "Scientific Name", value: scientific, isItalic: true)
-                    }
-
-                    // Family
-                    if let family = plant.family {
-                        detailField(label: "Family", value: family, isItalic: true)
-                    }
-
-                    // Genus
-                    if let genus = plant.genus {
-                        detailField(label: "Genus", value: genus, isItalic: true)
-                    }
-                } else {
-                    Text("No plant details found for this key yet.")
-                        .font(theme.typography.bodyMedium)
-                        .foregroundColor(theme.colors.textSecondary)
+                if let commonName = plant.commonName {
+                    detailField(label: "Common Name", value: commonName, isItalic: false)
+                }
+                if let scientific = plant.scientificName {
+                    detailField(label: "Scientific Name", value: scientific, isItalic: true)
+                }
+                if let family = plant.family {
+                    detailField(label: "Family", value: family, isItalic: true)
+                }
+                if let genus = plant.genus {
+                    detailField(label: "Genus", value: genus, isItalic: true)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -260,17 +181,19 @@ struct PlantDetailView: View {
     }
 
     @ViewBuilder
-    private func referenceImagesSection(images: [[String: Any]]) -> some View {
+    private var referenceImagesSection: some View {
         DSCard(padding: .cardPadding) {
             VStack(alignment: .leading, spacing: theme.spacing.sm) {
                 Text("Reference Images")
                     .font(theme.typography.headingMedium)
                     .foregroundColor(theme.colors.textPrimary)
 
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: theme.spacing.xs) {
-                    ForEach(Array(images.prefix(6).enumerated()), id: \.offset) { _, image in
-                        if let urlString = getRefImageUrl(image),
-                           let url = URL(string: urlString) {
+                LazyVGrid(
+                    columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())],
+                    spacing: theme.spacing.xs
+                ) {
+                    ForEach(Array(plant.referenceImages.prefix(6).enumerated()), id: \.offset) { _, image in
+                        if let urlString = image.url, let url = URL(string: urlString) {
                             AsyncImage(url: url) { phase in
                                 switch phase {
                                 case .success(let img):
@@ -309,7 +232,7 @@ struct PlantDetailView: View {
             if showToast {
                 VStack {
                     Spacer()
-                    Text(toastMessage)
+                    Text("Changes saved!")
                         .font(theme.typography.bodyMedium)
                         .padding(theme.spacing.md)
                         .background(Color.black.opacity(0.8))
@@ -323,205 +246,26 @@ struct PlantDetailView: View {
         .animation(.easeInOut, value: showToast)
     }
 
-    // MARK: - Data Loading
+    // MARK: - Editing
 
-    private func loadPlantDetails() async {
-        loading = true
-        error = nil
-
-        do {
-            // 1. Load plant log row
-            let logData = try await SupabaseAPI.shared.fetchPlantLogRow(key: plantKey)
-            logRow = logData
-
-            // 2. Load or create tree entry
-            let entry = try await SupabaseAPI.shared.fetchOrCreateTreeEntry(key: plantKey)
-            displayName = entry.display_name ?? ""
-            notes = entry.notes ?? ""
-            originalDisplayName = displayName
-            originalNotes = notes
-
-            // 3. Load plant data
-            let plantData = try await SupabaseAPI.shared.fetchPlant(key: plantKey)
-            plant = plantData
-
-            // Debug reference images
-            if let plant = plantData {
-                print("DEBUG: Plant data loaded for key: \(plantKey)")
-                print("DEBUG: Reference images count: \(plant.reference_images?.count ?? 0)")
-                if let images = plant.reference_images {
-                    for (i, img) in images.enumerated() {
-                        print("DEBUG: Image \(i): \(img)")
-                        if let url = getRefImageUrl(img) {
-                            print("DEBUG: Extracted URL \(i): \(url)")
-                        }
-                    }
-                }
-            }
-
-            loading = false
-        } catch {
-            print("DEBUG: Error loading plant details: \(error)")
-            self.error = error.localizedDescription
-            loading = false
-        }
+    private func beginEditing() {
+        draftDisplayName = plant.displayName ?? ""
+        draftNotes = plant.notes ?? ""
+        isEditing = true
     }
 
-    private func saveChanges() async {
-        isSaving = true
+    private func save() {
+        plant.displayName = draftDisplayName.isEmpty ? nil : draftDisplayName
+        plant.notes = draftNotes.isEmpty ? nil : draftNotes
+        plant.notesUpdatedAt = Date()
+        try? modelContext.save()
 
-        do {
-            try await SupabaseAPI.shared.updateTreeEntry(
-                key: plantKey,
-                displayName: displayName.isEmpty ? nil : displayName,
-                notes: notes.isEmpty ? nil : notes
-            )
+        isEditing = false
+        showToast = true
 
-            originalDisplayName = displayName
-            originalNotes = notes
-            isEditing = false
-
-            toastMessage = "Changes saved!"
-            showToast = true
-
-            Task {
-                try? await Task.sleep(nanoseconds: 2_200_000_000)
-                showToast = false
-            }
-        } catch {
-            self.error = error.localizedDescription
+        Task {
+            try? await Task.sleep(nanoseconds: 2_200_000_000)
+            showToast = false
         }
-
-        isSaving = false
-    }
-
-    // MARK: - Helpers
-
-    private func formatDate(_ iso: String) -> String {
-        let formatter = ISO8601DateFormatter()
-        if let date = formatter.date(from: iso) {
-            return date.formatted(date: .abbreviated, time: .shortened)
-        }
-        return iso
-    }
-
-    private func getRefImageUrl(_ img: [String: Any]) -> String? {
-        if let url = img["url"] as? String {
-            return url
-        }
-        if let urls = img["urls"] as? [String: String] {
-            return urls["m"] ?? urls["s"] ?? urls["o"]
-        }
-        if let url = img["url"] as? [String: String] {
-            return url["m"] ?? url["s"] ?? url["o"]
-        }
-        return nil
-    }
-}
-
-// MARK: - Data Models
-
-// Plant data model
-struct PlantData: Decodable {
-    let key: String
-    let common_name: String?
-    let scientific_name: String?
-    let family: String?
-    let genus: String?
-    let reference_images: [[String: Any]]?
-    let plant_details: [String: Any]?
-
-    enum CodingKeys: String, CodingKey {
-        case key, common_name, scientific_name, family, genus, reference_images, plant_details
-    }
-
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        key = try container.decode(String.self, forKey: .key)
-        common_name = try container.decodeIfPresent(String.self, forKey: .common_name)
-        scientific_name = try container.decodeIfPresent(String.self, forKey: .scientific_name)
-        family = try container.decodeIfPresent(String.self, forKey: .family)
-        genus = try container.decodeIfPresent(String.self, forKey: .genus)
-
-        // Decode reference_images as generic JSON
-        if let jsonValue = try? container.decodeIfPresent(JSONValue.self, forKey: .reference_images),
-           case .array(let arr) = jsonValue {
-            reference_images = arr.compactMap { value -> [String: Any]? in
-                if case .object(let dict) = value {
-                    return dict
-                }
-                return nil
-            }
-        } else {
-            reference_images = nil
-        }
-
-        // Decode plant_details as generic JSON
-        if let jsonValue = try? container.decodeIfPresent(JSONValue.self, forKey: .plant_details),
-           case .object(let dict) = jsonValue {
-            plant_details = dict
-        } else {
-            plant_details = nil
-        }
-    }
-}
-
-// Helper enum to decode arbitrary JSON
-private enum JSONValue: Decodable {
-    case string(String)
-    case number(Double)
-    case bool(Bool)
-    case object([String: Any])
-    case array([JSONValue])
-    case null
-
-    init(from decoder: Decoder) throws {
-        let container = try decoder.singleValueContainer()
-
-        if container.decodeNil() {
-            self = .null
-        } else if let bool = try? container.decode(Bool.self) {
-            self = .bool(bool)
-        } else if let number = try? container.decode(Double.self) {
-            self = .number(number)
-        } else if let string = try? container.decode(String.self) {
-            self = .string(string)
-        } else if let array = try? container.decode([JSONValue].self) {
-            self = .array(array)
-        } else if let dict = try? container.decode([String: JSONValue].self) {
-            var result: [String: Any] = [:]
-            for (key, value) in dict {
-                result[key] = value.toAny()
-            }
-            self = .object(result)
-        } else {
-            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Cannot decode JSON value")
-        }
-    }
-
-    func toAny() -> Any {
-        switch self {
-        case .string(let str): return str
-        case .number(let num): return num
-        case .bool(let bool): return bool
-        case .object(let dict): return dict
-        case .array(let arr): return arr.map { $0.toAny() }
-        case .null: return NSNull()
-        }
-    }
-}
-
-// Tree entry model
-struct TreeEntry: Decodable {
-    let key: String
-    let display_name: String?
-    let notes: String?
-    let updated_at: String?
-    let created_at: String?
-}
-
-#Preview {
-    NavigationStack {
-        PlantDetailView(plantKey: "test-plant")
     }
 }

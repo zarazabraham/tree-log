@@ -1,7 +1,12 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2?target=deno";
-
-// Minimal, robust handler for: POST { imageUrl, lat?, lng?, organ? }
-// Returns: { key, name, confidence, referenceImages, ... }
+// Stateless Pl@ntNet proxy.
+//
+// POST multipart/form-data:
+//   image  (file, required)  — JPEG/PNG, already downscaled by the client
+//   organ  (text, optional)  — leaf | flower | fruit | bark | auto   (default: leaf)
+//
+// Returns the best match as JSON. Nothing is persisted: the client owns the data
+// and stores it in SwiftData. This function exists only because PLANTNET_KEY cannot
+// ship inside the app bundle.
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -9,7 +14,11 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-// --- helpers ---
+const VALID_ORGANS = ["leaf", "flower", "fruit", "bark", "auto"];
+const PLANTNET_TIMEOUT_MS = 30_000;
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+
+/// Canonical species key, used by the client as the identity of a Plant record.
 function slugifyKey(s: string) {
   return s
     .toLowerCase()
@@ -18,297 +27,147 @@ function slugifyKey(s: string) {
     .replace(/[^a-z0-9-]/g, "");
 }
 
-// Create admin client with service role key for database operations.
-// The 127.0.0.1/localhost -> host.docker.internal rewrite below is local-dev
-// only: the function runs inside Docker, where 127.0.0.1 is the container.
-// Against a hosted https://<ref>.supabase.co URL both replaces are no-ops.
-const rawSupabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-const supabaseUrl = rawSupabaseUrl
-  .replace("http://127.0.0.1:54321", "http://host.docker.internal:54321")
-  .replace("http://localhost:54321", "http://host.docker.internal:54321");
-
-// Use the built-in service role key if available, otherwise allow a custom env var name.
-// (Supabase CLI can skip env vars that start with SUPABASE_ when using --env-file)
-const serviceKey =
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ??
-  Deno.env.get("SERVICE_ROLE_KEY") ??
-  "";
-
-if (!supabaseUrl) {
-  throw new Error("Missing SUPABASE_URL");
+function jsonResponse(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
 }
-if (!serviceKey) {
-  throw new Error("Missing service role key (SUPABASE_SERVICE_ROLE_KEY or SERVICE_ROLE_KEY)");
-}
-
-const admin = createClient(supabaseUrl, serviceKey);
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
 
-  // Only allow POST
   if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), {
-      status: 405,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Method not allowed" }, 405);
   }
-
-  // Parse body safely
-  let body: any;
-  try {
-    body = await req.json();
-  } catch {
-    return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
-  const imageUrl = body?.imageUrl as string | undefined;
-  const lat = typeof body?.lat === "number" ? body.lat : null;
-  const lng = typeof body?.lng === "number" ? body.lng : null;
-
-  if (!imageUrl || typeof imageUrl !== "string") {
-    return new Response(JSON.stringify({ error: "Missing required field: imageUrl" }), {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
-  // Same local-dev rewrite for the image URL: a 127.0.0.1 URL from the client
-  // resolves to the container, not your Mac. No-op for hosted storage URLs.
-  const normalizedImageUrl = imageUrl
-    .replace("http://127.0.0.1:54321", "http://host.docker.internal:54321")
-    .replace("http://localhost:54321", "http://host.docker.internal:54321");
 
   const apiKey = Deno.env.get("PLANTNET_KEY");
   if (!apiKey) {
-    return new Response(JSON.stringify({ error: "Server misconfigured: missing PLANTNET_KEY" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: "Server misconfigured: missing PLANTNET_KEY" }, 500);
   }
 
-  // Get optional organ parameter (default to "leaf")
-  const organ = (body?.organ as string) || "leaf";
-  const validOrgans = ["leaf", "flower", "fruit", "bark", "auto"];
-  if (!validOrgans.includes(organ)) {
-    return new Response(
-      JSON.stringify({
-        error: `Invalid organ type. Must be one of: ${validOrgans.join(", ")}`,
-      }),
-      {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
-    );
-  }
-
+  // --- Parse the uploaded image ---
+  let form: FormData;
   try {
-    // 1) Download the image (PlantNet expects multipart image upload)
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
-
-    let imgRes: Response;
-    try {
-      imgRes = await fetch(normalizedImageUrl, { signal: controller.signal });
-    } catch (fetchErr) {
-      clearTimeout(timeoutId);
-      if (fetchErr instanceof Error && fetchErr.name === "AbortError") {
-        return new Response(JSON.stringify({ error: "Image fetch timeout after 15 seconds" }), {
-          status: 408,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      throw fetchErr;
-    }
-    clearTimeout(timeoutId);
-
-    if (!imgRes.ok) {
-      return new Response(
-        JSON.stringify({ error: `Could not fetch imageUrl (HTTP ${imgRes.status})` }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-
-    const imgBlob = await imgRes.blob();
-
-    // Detect content type from response or blob
-    const contentType = imgRes.headers.get("content-type") || imgBlob.type || "image/jpeg";
-    const extension = contentType.includes("png")
-      ? "png"
-      : contentType.includes("webp")
-        ? "webp"
-        : "jpg";
-
-    // 2) Call Pl@ntNet Identify
-    const form = new FormData();
-    form.append("images", imgBlob, `tree.${extension}`);
-    form.append("organs", organ);
-
-    const project = "k-world-flora";
-    const plantNetUrl =
-      `https://my-api.plantnet.org/v2/identify/${project}` +
-      `?api-key=${encodeURIComponent(apiKey)}` +
-      `&include-related-images=true` +
-      `&nb-results=3` +
-      `&lang=en`;
-
-    const plantNetController = new AbortController();
-    const plantNetTimeoutId = setTimeout(() => plantNetController.abort(), 30000);
-
-    let idRes: Response;
-    try {
-      idRes = await fetch(plantNetUrl, {
-        method: "POST",
-        body: form,
-        signal: plantNetController.signal,
-      });
-    } catch (fetchErr) {
-      clearTimeout(plantNetTimeoutId);
-      if (fetchErr instanceof Error && fetchErr.name === "AbortError") {
-        return new Response(JSON.stringify({ error: "PlantNet API timeout after 30 seconds" }), {
-          status: 408,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      throw fetchErr;
-    }
-    clearTimeout(plantNetTimeoutId);
-
-    const raw = await idRes.json().catch(() => ({}));
-
-    if (!idRes.ok) {
-      return new Response(
-        JSON.stringify({
-          error: "PlantNet request failed",
-          status: idRes.status,
-          details: raw,
-        }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-
-    // 3) Extract best match
-    const best = raw?.results?.[0];
-
-    // Build plant record from extracted information
-    const commonName =
-      best?.species?.commonNames?.[0] ||
-      best?.species?.scientificNameWithoutAuthor ||
-      best?.species?.scientificName ||
-      "Unknown";
-
-    const scientificName =
-      best?.species?.scientificName || best?.species?.scientificNameWithoutAuthor || null;
-
-    const family = best?.species?.family?.scientificNameWithoutAuthor || null;
-    const genus = best?.species?.genus?.scientificNameWithoutAuthor || null;
-    const commonNames = Array.isArray(best?.species?.commonNames) ? best.species.commonNames : [];
-
-    const gbifId = best?.gbif?.id ? String(best.gbif.id) : null;
-    const powoId = best?.powo?.id ? String(best.powo.id) : null;
-    const iucnCategory = best?.iucn?.category ? String(best.iucn.category) : null;
-
-    const confidence = typeof best?.score === "number" ? best.score : null;
-
-    const features: string[] = [];
-
-    const referenceImages =
-      (best?.images ?? []).map((img: any) => ({
-        organ: img.organ,
-        author: img.author,
-        license: img.license,
-        citation: img.citation,
-        url: img.url?.m || img.url?.s || img.url?.o || null,
-        urls: img.url ?? null,
-      })) ?? [];
-
-    // ✅ Canonical key used for BOTH DB + URL routing
-    const rawKey =
-      best?.species?.scientificNameWithoutAuthor ||
-      best?.species?.scientificName ||
-      commonName ||
-    
-      "unknown";
-    const plantKey = slugifyKey(String(rawKey));
-    // 4) Upsert into plants table
-    const { data: plantData, error: plantError } = await admin
-      .from("plants")
-      .upsert(
-        {
-          key: plantKey,
-          key_lc: plantKey.toLowerCase(),
-          common_name: commonName,
-          scientific_name: scientificName,
-          family,
-          genus,
-          reference_images: referenceImages,
-          plant_details: best, // store the whole best match for now
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "key" },
-      )
-      .select("id")
-      .single();
-
-    if (plantError) {
-      return new Response(JSON.stringify({ error: "Plant upsert failed", details: plantError }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // 5) Insert sighting record
-    const { data, error } = await admin
-      .from("sightings")
-      .insert({
-        plant_id: plantData.id,
-        image_url: imageUrl,
-        lat,
-        lng,
-        confidence,
-      })
-      .select("id, created_at")
-      .single();
-
-    if (error) {
-      return new Response(JSON.stringify({ error: "Sighting insert failed", details: error }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // ✅ Return key so frontend can link to /plants/{key}
-    return new Response(
-      JSON.stringify({
-        key: plantKey,
-        id: data.id,
-        created_at: data.created_at,
-        name: commonName,
-        commonName,
-        scientificName,
-        genus,
-        family,
-        commonNames,
-        gbifId,
-        powoId,
-        iucnCategory,
-        confidence,
-        features,
-        referenceImages,
-        rawTop: best,
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
-  } catch (err) {
-    return new Response(
-      JSON.stringify({ error: "Unexpected server error", details: String(err) }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    form = await req.formData();
+  } catch {
+    return jsonResponse(
+      { error: "Expected multipart/form-data with an 'image' file field" },
+      400,
     );
   }
+
+  const image = form.get("image");
+  if (!(image instanceof File)) {
+    return jsonResponse({ error: "Missing required file field: image" }, 400);
+  }
+  if (image.size === 0) {
+    return jsonResponse({ error: "Uploaded image is empty" }, 400);
+  }
+  if (image.size > MAX_IMAGE_BYTES) {
+    return jsonResponse(
+      { error: `Image too large (${image.size} bytes, max ${MAX_IMAGE_BYTES})` },
+      413,
+    );
+  }
+
+  const organ = (form.get("organ") as string | null) || "leaf";
+  if (!VALID_ORGANS.includes(organ)) {
+    return jsonResponse(
+      { error: `Invalid organ type. Must be one of: ${VALID_ORGANS.join(", ")}` },
+      400,
+    );
+  }
+
+  // --- Call Pl@ntNet ---
+  const contentType = image.type || "image/jpeg";
+  const extension = contentType.includes("png")
+    ? "png"
+    : contentType.includes("webp")
+      ? "webp"
+      : "jpg";
+
+  const outbound = new FormData();
+  outbound.append("images", image, `plant.${extension}`);
+  outbound.append("organs", organ);
+
+  const plantNetUrl =
+    `https://my-api.plantnet.org/v2/identify/k-world-flora` +
+    `?api-key=${encodeURIComponent(apiKey)}` +
+    `&include-related-images=true` +
+    `&nb-results=3` +
+    `&lang=en`;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), PLANTNET_TIMEOUT_MS);
+
+  let idRes: Response;
+  try {
+    idRes = await fetch(plantNetUrl, {
+      method: "POST",
+      body: outbound,
+      signal: controller.signal,
+    });
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      return jsonResponse({ error: "Pl@ntNet timed out after 30 seconds" }, 408);
+    }
+    return jsonResponse({ error: "Pl@ntNet request failed", details: String(err) }, 502);
+  } finally {
+    clearTimeout(timeoutId);
+  }
+
+  const raw = await idRes.json().catch(() => ({}));
+
+  if (!idRes.ok) {
+    return jsonResponse(
+      { error: "Pl@ntNet request failed", status: idRes.status, details: raw },
+      502,
+    );
+  }
+
+  // --- Shape the best match for the client ---
+  const best = raw?.results?.[0];
+  if (!best) {
+    return jsonResponse({ error: "No match found for this image" }, 404);
+  }
+
+  const commonName =
+    best?.species?.commonNames?.[0] ||
+    best?.species?.scientificNameWithoutAuthor ||
+    best?.species?.scientificName ||
+    "Unknown";
+
+  const scientificName =
+    best?.species?.scientificName || best?.species?.scientificNameWithoutAuthor || null;
+
+  const rawKey =
+    best?.species?.scientificNameWithoutAuthor ||
+    best?.species?.scientificName ||
+    commonName ||
+    "unknown";
+
+  const referenceImages = (best?.images ?? []).map((img: any) => ({
+    organ: img.organ ?? null,
+    author: img.author ?? null,
+    license: img.license ?? null,
+    url: img.url?.m || img.url?.s || img.url?.o || null,
+  }));
+
+  return jsonResponse({
+    key: slugifyKey(String(rawKey)),
+    name: commonName,
+    commonName,
+    scientificName,
+    genus: best?.species?.genus?.scientificNameWithoutAuthor || null,
+    family: best?.species?.family?.scientificNameWithoutAuthor || null,
+    commonNames: Array.isArray(best?.species?.commonNames) ? best.species.commonNames : [],
+    gbifId: best?.gbif?.id ? String(best.gbif.id) : null,
+    powoId: best?.powo?.id ? String(best.powo.id) : null,
+    iucnCategory: best?.iucn?.category ? String(best.iucn.category) : null,
+    confidence: typeof best?.score === "number" ? best.score : null,
+    referenceImages,
+  });
 });

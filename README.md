@@ -1,66 +1,72 @@
 # Plantydex
 
-A Pokédex for plants. Photograph a plant, Pl@ntNet identifies it, and it's
-recorded as a **sighting** of a **plant** species. Over time you build a
-collection, tracked as progress across US floristic regions.
+A Pokédex for plants. Photograph a plant, Pl@ntNet identifies it, and it's recorded as a
+**sighting** of a **plant** species. Over time you build a collection, tracked as progress
+across US floristic regions.
 
-## Surfaces
+## Architecture
 
-| Path | What it is | Status |
-|---|---|---|
-| `ios/Plantydex/` | SwiftUI app — Log / Upload / Progress tabs, token-driven design system | **The product.** Active development. |
-| `supabase/` | Postgres + Storage + Deno edge functions | Active. Hosted project ref `enjjvyhhyeufkkrxbhbk`. |
-| `web/` | Next.js 16 prototype — `/upload`, `/log`, `/plants/[key]` | **Frozen.** Kept as a debug/admin surface; no new features. |
+Your collection lives **on your phone**, in SwiftData, synced across your devices through
+iCloud (CloudKit). There are no accounts, no shared database, and no per-user rows on a
+server to get wrong.
 
-## ⚠️ Schema drift — do not run `supabase db reset`
+A server exists for exactly one reason: the Pl@ntNet API key can't ship inside an app
+bundle. So the backend is two stateless edge functions plus one global cache.
 
-The migrations in `supabase/migrations/` **do not describe the live database.**
+```
+┌─ iPhone ───────────────────────────────┐    ┌─ Supabase ─────────────────────────┐
+│ SwiftData + CloudKit                   │    │ identify-tree                       │
+│   Plant ─┬─ Sighting (photo)           │───▶│   image → Pl@ntNet → JSON           │
+│          └─ notes, regionIds           │    │   (stateless, stores nothing)       │
+│   RegionalFloraCache                   │───▶│ get-regional-flora                  │
+│                                        │    │   + regional_flora_cache (global)   │
+│ GBIF (keyless) ◀── direct from device  │    │                                     │
+└────────────────────────────────────────┘    └─────────────────────────────────────┘
+```
 
-They build a `trees` table and a `plant_log` view over it. Every piece of
-running code instead uses `plants`, `sightings`, `tree_entries`, and a
-differently-shaped `plant_log` (`key`, `name`, `sightings_count`,
-`thumbnail_url`). Those objects were created by hand in the Supabase
-dashboard and were never captured as migrations.
+| Path | What it is |
+|---|---|
+| `ios/Plantydex/` | The app. SwiftUI, SwiftData, a token-driven design system. |
+| `supabase/` | Two edge functions and one migration. Hosted project ref `enjjvyhhyeufkkrxbhbk`. |
 
-Consequences until this is fixed:
+## Data model
 
-- `supabase db reset` will produce a database the app cannot run against.
-- A fresh local stack will not work without manually recreating the schema.
-- `20260102203326_create_tree_photos_bucket.sql` is an empty file; the
-  `tree-photos` storage bucket also exists only in the dashboard.
+On device (`ios/Plantydex/Models/`):
 
-The fix is to run `supabase db pull` against the linked project to capture
-reality, then delete the obsolete migrations. Until then, treat the hosted
-database as the source of truth.
+- **`Plant`** — one per species, keyed by a slugified scientific name. Holds taxonomy,
+  Pl@ntNet reference images, your display name and notes, the US regions GBIF has records
+  for, and denormalized `lastSeenAt` / `sightingCount` so the log sorts without a join.
+- **`Sighting`** — one per photo you take. The JPEG lives in `externalStorage`, which
+  CloudKit syncs as a CKAsset.
+- **`RegionalFloraCache`** — local mirror of the server's species counts so the Progress
+  tab renders instantly on launch.
 
-## Data model (as actually deployed)
+On the server, one table: **`regional_flora_cache`**. It holds no user data — Pl@ntNet
+species counts per region are identical for everyone and expensive to compute, so they're
+cached centrally with a 7-day TTL.
 
-- **`plants`** — the shared species catalogue, keyed by a slugified
-  scientific name (`key`, with `key_lc` for lookups). Holds taxonomy,
-  Pl@ntNet reference images, and the raw match blob.
-- **`sightings`** — one row per photo you take, referencing `plants.id`.
-- **`tree_entries`** — your per-species display name and notes, keyed by
-  the same plant `key`.
-- **`plant_log`** — a view that collapses sightings into one row per
-  species with a count, last-seen timestamp, and thumbnail.
-- **`regional_flora_cache`**, **`plant_region_distribution`** — caches for
-  the Progress tab (7-day and 30-day TTLs enforced in the edge functions).
+### Known constraint
+
+CloudKit forbids unique constraints, so `Plant.key` is deduplicated in code
+(`IdentifyService` fetches before inserting) rather than by the schema. Two devices
+identifying the same species while both offline can produce duplicate keys after sync;
+the log and progress views group by key on read, so they still render correctly.
 
 ## Edge functions
 
-| Function | Auth | Purpose |
+| Function | JWT | Purpose |
 |---|---|---|
-| `identify-tree` | `verify_jwt = true` | Downloads the uploaded image, calls Pl@ntNet, upserts `plants`, inserts a `sighting`. |
-| `get-regional-flora` | `verify_jwt = false` | Species count for the user's region, cached. |
-| `get-plant-distribution` | `verify_jwt = false` | Maps plant keys to US region ids via GBIF, cached. |
+| `identify-tree` | on | Accepts a multipart image, calls Pl@ntNet, returns the best match. Persists nothing. |
+| `get-regional-flora` | off | Species count for a lat/lon, cached 7 days. |
 
-The two regional functions have JWT verification off because the iOS client
-sends a publishable key, which is not a JWT. Both should move to
-`verify_jwt = true` when Sign in with Apple lands.
+`get-regional-flora` has JWT verification off because the client sends a publishable key,
+which is not a JWT. Neither function exposes user data; abuse protection is Supabase's
+per-project rate limiting.
 
 ## Local development
 
-Requires Docker, the [Supabase CLI](https://supabase.com/docs/guides/local-development), Node 22+, and Xcode.
+Requires Docker, the [Supabase CLI](https://supabase.com/docs/guides/local-development),
+and Xcode 16+.
 
 ```bash
 supabase start
@@ -72,41 +78,30 @@ Secrets are gitignored. You need to create:
 | File | Keys |
 |---|---|
 | `supabase/functions/.env` | `PLANTNET_KEY` |
-| `supabase/.env.local` | `PLANTNET_KEY`, `SB_URL`, `SB_SERVICE_ROLE_KEY` |
-| `web/.env.local` | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` |
 | `ios/Plantydex/Config.xcconfig` | `SB_URL`, `SB_ANON_KEY` — copy `Config.example.xcconfig` |
 
 Get a Pl@ntNet API key at <https://my.plantnet.org/>.
-
-### Web
-
-```bash
-cd web && npm ci && npm run dev
-```
-
-`web/.env.local` must exist even for `npm run build` — the Supabase client is
-constructed at module scope, so prerendering `/log` fails without it.
 
 ### iOS
 
 Open `ios/Plantydex/Plantydex.xcodeproj`. Copy `Config.example.xcconfig` to
 `Config.xcconfig` and fill it in.
 
-To run on a **physical device** against a local stack, `SB_URL` must be your
-Mac's LAN IP (e.g. `http://192.168.1.50:54321`), not `127.0.0.1` — and both
-devices must be on the same network. The simulator can use `127.0.0.1`.
+To run on a **physical device** against a local stack, `SB_URL` must be your Mac's LAN IP
+(e.g. `http://192.168.1.50:54321`), not `127.0.0.1`, and both devices must be on the same
+network. The simulator can use `127.0.0.1`.
 
-## Known blockers before TestFlight
+CloudKit sync needs a simulator or device signed into iCloud. Without one the app falls
+back to a local-only store — it still works, it just doesn't sync.
 
-1. **No authentication.** Everything uses the anon key and RLS is
-   `USING (true)`. `sightings` and `tree_entries` have no owner column, so
-   every user would share one global plant log and could edit each other's
-   notes. Needs Sign in with Apple plus `user_id` scoping.
-2. **Hardcoded LAN endpoint.** `Config.xcconfig` is wired to a home IP over
-   cleartext HTTP, and `Info.plist` sets `NSAllowsArbitraryLoads` to permit
-   it. Needs split debug/release configs and a scoped ATS exception.
-3. **No app icon.** `AppIcon.appiconset` declares three 1024×1024 slots and
-   contains no images — an automatic App Store rejection.
-4. **Deployment target is iOS 26.0**, which excludes almost every device.
-5. **No `PrivacyInfo.xcprivacy`** despite using location.
-6. The schema drift above.
+## Remaining blockers before TestFlight
+
+1. **Hardcoded LAN endpoint.** `Config.xcconfig` points at a home IP over cleartext HTTP,
+   and `Info.plist` still sets `NSAllowsArbitraryLoads` plus literal `SB_*` values. Needs
+   split debug/release configs and a scoped ATS exception.
+2. **No app icon.** `AppIcon.appiconset` declares three 1024×1024 slots and contains no
+   images — an automatic App Store rejection.
+3. **No `PrivacyInfo.xcprivacy`** despite using location.
+4. **Region coverage gap.** `USRegion.stateToRegionId` maps 48 states; Kentucky and
+   Tennessee belong to no region, so a species recorded only there unlocks nothing. This
+   was inherited from the original server-side table.

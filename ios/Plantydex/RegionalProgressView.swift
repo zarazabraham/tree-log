@@ -5,21 +5,23 @@
 
 import SwiftUI
 import CoreLocation
+import SwiftData
 
 struct RegionalProgressView: View {
     @Environment(\.theme) private var theme
     @Environment(\.openURL) private var openURL
+    @Environment(\.modelContext) private var modelContext
     @StateObject private var locationManager = LocationManager()
+
+    @Query private var plants: [Plant]
 
     // MARK: - State
 
-    @State private var flora: RegionalFloraResult?
-    @State private var collectedCount = 0
+    @State private var flora: RegionalFloraCache?
     @State private var loading = true
     @State private var error: String?
 
     // Region unlock state
-    @State private var plantDistributions: [String: [String]] = [:] // plantKey → [regionId]
     @State private var regionDiscoveryQueue: [USRegion] = []
     @State private var activeDiscovery: USRegion? = nil
 
@@ -31,19 +33,25 @@ struct RegionalProgressView: View {
 
     // MARK: - Computed
 
+    /// Distinct species collected. Plants are deduplicated by key for the same reason
+    /// PlantLogView does it: CloudKit cannot enforce uniqueness across devices.
+    private var collectedCount: Int {
+        Set(plants.map(\.key)).count
+    }
+
     private var progress: Double {
         guard let flora, flora.speciesCount > 0 else { return 0 }
         return min(Double(collectedCount) / Double(flora.speciesCount), 1.0)
     }
 
     private var unlockedRegionIds: Set<String> {
-        Set(plantDistributions.values.flatMap { $0 })
+        Set(plants.flatMap(\.regionIds))
     }
 
     private var plantsPerRegion: [String: Int] {
         var counts: [String: Int] = [:]
-        for regionIds in plantDistributions.values {
-            for id in regionIds { counts[id, default: 0] += 1 }
+        for plant in plants {
+            for id in plant.regionIds { counts[id, default: 0] += 1 }
         }
         return counts
     }
@@ -101,7 +109,7 @@ struct RegionalProgressView: View {
     // MARK: - Progress Content
 
     @ViewBuilder
-    private func progressContent(flora: RegionalFloraResult) -> some View {
+    private func progressContent(flora: RegionalFloraCache) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: theme.spacing.sectionSpacing) {
 
@@ -331,27 +339,18 @@ struct RegionalProgressView: View {
         guard let loc else { loading = false; return }
 
         do {
-            // Step 1: flora + plant log in parallel
-            async let floraResult = SupabaseAPI.shared.fetchRegionalFlora(
+            // The plant collection is already local; only the regional species count
+            // needs the network, and only when the on-device cache has gone stale.
+            flora = try await RegionService.regionalFlora(
                 lat: loc.coordinate.latitude,
-                lon: loc.coordinate.longitude
+                lon: loc.coordinate.longitude,
+                context: modelContext
             )
-            async let logResult = SupabaseAPI.shared.fetchPlantLog()
-            let (f, log) = try await (floraResult, logResult)
-            flora = f
-            collectedCount = log.count
 
-            // Step 2: distribution for all plants (needs plant keys from step 1)
-            if !log.isEmpty {
-                let distributions = try await SupabaseAPI.shared.fetchPlantDistributions(
-                    plantKeys: log.map { $0.key }
-                )
-                let distMap = Dictionary(
-                    uniqueKeysWithValues: distributions.map { ($0.plantKey, $0.regionIds) }
-                )
-                plantDistributions = distMap
-                checkForNewDiscoveries()
-            }
+            // Distribution lookups hit GBIF directly and fail soft, so they never
+            // take the screen down.
+            await RegionService.refreshDistributions(for: plants, context: modelContext)
+            checkForNewDiscoveries()
         } catch {
             self.error = error.localizedDescription
         }

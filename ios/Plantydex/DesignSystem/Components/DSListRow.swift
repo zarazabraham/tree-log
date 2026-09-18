@@ -15,6 +15,7 @@ struct DSListRow<Accessory: View>: View {
     let subtitle: String?
     let icon: String?
     let imageURL: URL?
+    let imageData: Data?
     let accessory: Accessory?
 
     init(
@@ -22,19 +23,28 @@ struct DSListRow<Accessory: View>: View {
         subtitle: String? = nil,
         icon: String? = nil,
         imageURL: URL? = nil,
+        imageData: Data? = nil,
         @ViewBuilder accessory: () -> Accessory = { EmptyView() }
     ) {
         self.title = title
         self.subtitle = subtitle
         self.icon = icon
         self.imageURL = imageURL
+        self.imageData = imageData
         self.accessory = accessory()
     }
 
     var body: some View {
         HStack(spacing: theme.spacing.sm) {
             // Leading image or icon
-            if let imageURL = imageURL {
+            if let imageData, let uiImage = UIImage(data: imageData) {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 56, height: 56)
+                    .clipped()
+                    .clipShape(RoundedRectangle(cornerRadius: theme.radii.image))
+            } else if let imageURL = imageURL {
                 AsyncImage(url: imageURL) { phase in
                     switch phase {
                     case .success(let image):
@@ -87,12 +97,14 @@ extension DSListRow where Accessory == EmptyView {
         title: String,
         subtitle: String? = nil,
         icon: String? = nil,
-        imageURL: URL? = nil
+        imageURL: URL? = nil,
+        imageData: Data? = nil
     ) {
         self.title = title
         self.subtitle = subtitle
         self.icon = icon
         self.imageURL = imageURL
+        self.imageData = imageData
         self.accessory = nil
     }
 }

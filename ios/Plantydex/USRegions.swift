@@ -119,3 +119,78 @@ extension USRegion {
         ),
     ]
 }
+
+// MARK: - GBIF state mapping
+
+extension USRegion {
+    /// Maps a GBIF `stateProvince` facet value (lowercased) to a region id.
+    ///
+    /// Ported from the former get-plant-distribution edge function; the device now
+    /// queries GBIF directly, since that API needs no key.
+    ///
+    /// NOTE: this covers 48 states. Kentucky and Tennessee belong to no region here,
+    /// matching the original server-side table — a species recorded only in KY/TN
+    /// unlocks nothing. Add them to a region (and to that region's `states` string)
+    /// to close the gap.
+    static let stateToRegionId: [String: String] = [
+        "washington": "pacific-northwest",
+        "oregon": "pacific-northwest",
+        "california": "california",
+        "colorado": "mountain-west",
+        "utah": "mountain-west",
+        "nevada": "mountain-west",
+        "idaho": "mountain-west",
+        "montana": "mountain-west",
+        "wyoming": "mountain-west",
+        "arizona": "desert-southwest",
+        "new mexico": "desert-southwest",
+        "north dakota": "great-plains",
+        "south dakota": "great-plains",
+        "nebraska": "great-plains",
+        "kansas": "great-plains",
+        "oklahoma": "great-plains",
+        "minnesota": "midwest",
+        "wisconsin": "midwest",
+        "michigan": "midwest",
+        "illinois": "midwest",
+        "indiana": "midwest",
+        "ohio": "midwest",
+        "iowa": "midwest",
+        "missouri": "midwest",
+        "maine": "northeast",
+        "new hampshire": "northeast",
+        "vermont": "northeast",
+        "massachusetts": "northeast",
+        "rhode island": "northeast",
+        "connecticut": "northeast",
+        "new york": "northeast",
+        "pennsylvania": "northeast",
+        "new jersey": "northeast",
+        "delaware": "mid-atlantic-appalachia",
+        "maryland": "mid-atlantic-appalachia",
+        "virginia": "mid-atlantic-appalachia",
+        "west virginia": "mid-atlantic-appalachia",
+        "north carolina": "mid-atlantic-appalachia",
+        "south carolina": "mid-atlantic-appalachia",
+        "georgia": "southeast",
+        "florida": "southeast",
+        "alabama": "southeast",
+        "mississippi": "southeast",
+        "louisiana": "southeast",
+        "arkansas": "southeast",
+        "texas": "texas",
+        "alaska": "alaska",
+        "hawaii": "hawaii",
+    ]
+
+    /// Collapses GBIF state names into the set of regions they belong to.
+    static func regionIds(forStateNames names: [String]) -> [String] {
+        var ids = Set<String>()
+        for name in names {
+            if let id = stateToRegionId[name.trimmingCharacters(in: .whitespaces).lowercased()] {
+                ids.insert(id)
+            }
+        }
+        return Array(ids)
+    }
+}
