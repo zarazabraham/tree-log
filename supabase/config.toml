@@ -2,7 +2,10 @@ project_id = "tree-log"
 
 [functions.identify-tree]
 enabled = true
-verify_jwt = true
+# false because the client authenticates with a publishable key, which is not a JWT,
+# and the app has no auth to mint one. The function is stateless and exposes no user
+# data; abuse protection is Supabase's per-project rate limiting.
+verify_jwt = false
 import_map = "./functions/identify-tree/deno.json"
 # Uncomment to specify a custom file path to the entrypoint.
 # Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx

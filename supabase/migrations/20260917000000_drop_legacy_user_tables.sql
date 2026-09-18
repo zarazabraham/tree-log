@@ -5,13 +5,17 @@
 --   plant_log (view)                 -> denormalized onto Plant
 --   plant_region_distribution        -> Plant.regionIds, refreshed from GBIF on-device
 --   trees                            -> dead since the plants/sightings refactor
---   tree-photos bucket               -> Sighting.photo (externalStorage, synced as CKAsset)
 --
 -- regional_flora_cache is deliberately kept: its Pl@ntNet species counts are global,
 -- expensive to compute, and identical for every user.
 --
--- IF EXISTS throughout because these objects were created by hand in the dashboard and
--- never existed in migration history, so a fresh local stack will not have them.
+-- IF EXISTS throughout because several of these were created by hand in the dashboard
+-- of the local stack and never existed on the hosted project or in migration history.
+--
+-- The tree-photos storage bucket is NOT dropped here: Postgres rejects direct DML
+-- against storage.objects ("Direct deletion from storage tables is not allowed").
+-- Remove it through the Storage API or the dashboard instead. Sighting photos now live
+-- on the device as externalStorage Data, synced by CloudKit.
 
 DROP VIEW IF EXISTS plant_log;
 
@@ -20,6 +24,3 @@ DROP TABLE IF EXISTS tree_entries;
 DROP TABLE IF EXISTS plants;
 DROP TABLE IF EXISTS trees;
 DROP TABLE IF EXISTS plant_region_distribution;
-
-DELETE FROM storage.objects WHERE bucket_id = 'tree-photos';
-DELETE FROM storage.buckets WHERE id = 'tree-photos';

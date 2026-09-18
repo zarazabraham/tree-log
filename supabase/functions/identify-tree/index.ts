@@ -122,6 +122,12 @@ Deno.serve(async (req) => {
   const raw = await idRes.json().catch(() => ({}));
 
   if (!idRes.ok) {
+    // Pl@ntNet answers 404 "Species not found" for an unrecognizable photo. That is a
+    // normal outcome, not a server fault, so surface it as 404 — the client turns it
+    // into "No plant matched this photo" rather than an error banner.
+    if (idRes.status === 404) {
+      return jsonResponse({ error: "No match found for this image" }, 404);
+    }
     return jsonResponse(
       { error: "Pl@ntNet request failed", status: idRes.status, details: raw },
       502,
