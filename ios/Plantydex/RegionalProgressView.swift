@@ -75,13 +75,18 @@ struct RegionalProgressView: View {
                         )
                     } else if let flora {
                         progressContent(flora: flora)
+                    } else {
+                        awaitingLocationView
                     }
                 }
             }
             .navigationTitle("Region Progress")
             .task {
                 locationManager.requestLocation()
-                if let loc = locationManager.location { await fetchAll(location: loc) }
+                // Called unconditionally: fetchAll clears `loading` when there is no
+                // location yet, so a failed or slow first fix shows the retry state
+                // instead of spinning forever. onChange picks it up when a fix arrives.
+                await fetchAll()
             }
             .onChange(of: locationManager.location) { _, newLocation in
                 guard let newLocation, flora == nil else { return }
@@ -311,6 +316,21 @@ struct RegionalProgressView: View {
         if plantsHere >= 15 { return "⭐" }
         if plantsHere >= 5  { return "🌿" }
         return nil
+    }
+
+    // MARK: - Awaiting Location
+
+    @ViewBuilder
+    private var awaitingLocationView: some View {
+        DSEmptyState(
+            icon: "location.magnifyingglass",
+            title: "Waiting for Location",
+            message: "Plantydex needs a location fix to work out which region you're in.",
+            actionTitle: "Try Again"
+        ) {
+            locationManager.requestLocation()
+            Task { await fetchAll() }
+        }
     }
 
     // MARK: - Location Denied

@@ -8,6 +8,7 @@ import Combine
 
 final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var location: CLLocation?
+    @Published var lastError: Error?
     @Published var authorizationStatus: CLAuthorizationStatus
 
     private let manager = CLLocationManager()
@@ -21,6 +22,7 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
     }
 
     func requestLocation() {
+        lastError = nil
         switch manager.authorizationStatus {
         case .notDetermined:
             manager.requestWhenInUseAuthorization()
@@ -55,6 +57,9 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        print("LocationManager error: \(error.localizedDescription)")
+        // requestLocation() delivers exactly one fix or one failure, so a transient
+        // failure would otherwise leave callers waiting forever. Record it; the
+        // Progress tab shows a retry rather than an endless spinner.
+        lastError = error
     }
 }
