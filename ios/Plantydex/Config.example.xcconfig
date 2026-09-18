@@ -2,13 +2,20 @@
 //  Config.example.xcconfig
 //  Plantydex
 //
-//  Copy this file to Config.xcconfig and fill in your values.
-//  Config.xcconfig is gitignored so local endpoints stay out of version control.
+//  Copy to Config.debug.xcconfig and Config.release.xcconfig, then fill in.
+//  Both are gitignored so endpoints and keys stay out of version control.
 //
-//  Local development: point SB_URL at your machine's LAN IP so a device on the
-//  same network can reach `supabase start` (127.0.0.1 only works in the simulator).
-//  Hosted: https://<project-ref>.supabase.co
+//  NOTE: "//" begins a comment in xcconfig, so a URL cannot be written literally.
+//  Build it from SLASH as below.
 //
 
-SB_URL=http://127.0.0.1:54321
-SB_ANON_KEY=your_publishable_anon_key_here
+SLASH = /
+
+// Local: your Mac's LAN IP so a physical device can reach `supabase start`.
+// The simulator can use 127.0.0.1.
+SB_URL = http:$(SLASH)$(SLASH)127.0.0.1:54321
+
+// Hosted: https://<project-ref>.supabase.co
+// SB_URL = https:$(SLASH)$(SLASH)your-project-ref.supabase.co
+
+SB_ANON_KEY = your_publishable_anon_key_here

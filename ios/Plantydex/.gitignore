@@ -10,5 +10,7 @@ xcuserdata/
 build/
 DerivedData/
 
-# Local Supabase config (URL + key). Copy Config.example.xcconfig to Config.xcconfig.
+# Local Supabase config (URL + key). Copy Config.example.xcconfig to these.
+Config.debug.xcconfig
+Config.release.xcconfig
 Config.xcconfig

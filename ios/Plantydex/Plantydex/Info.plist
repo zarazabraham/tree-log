@@ -4,7 +4,7 @@
 <dict>
 	<key>NSAppTransportSecurity</key>
 	<dict>
-		<key>NSAllowsArbitraryLoads</key>
+		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
 	<key>NSLocalNetworkUsageDescription</key>
@@ -12,9 +12,9 @@
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Plantydex uses your location to show how many plant species exist in your region.</string>
 	<key>SB_ANON_KEY</key>
-	<string>sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH</string>
+	<string>$(SB_ANON_KEY)</string>
 	<key>SB_URL</key>
-	<string>http://192.168.86.28:54321</string>
+	<string>$(SB_URL)</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>

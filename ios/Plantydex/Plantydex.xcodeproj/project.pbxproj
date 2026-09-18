@@ -11,7 +11,6 @@
 		2C2981482F5CB8AD007EE48A /* RegionalProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C2981472F5CB8AD007EE48A /* RegionalProgressView.swift */; };
 		2C29814A2F5CB8B5007EE48A /* USRegions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C2981492F5CB8B5007EE48A /* USRegions.swift */; };
 		2C29814E2F5CBDBF007EE48A /* RegionDiscoveryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C29814D2F5CBDBF007EE48A /* RegionDiscoveryView.swift */; };
-		2C7C28C82F08D1E200CF9066 /* Config.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 2C7C28C72F08D1D600CF9066 /* Config.xcconfig */; };
 		2C7C28CA2F08D3D000CF9066 /* SupabaseConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C7C28C92F08D3C000CF9066 /* SupabaseConfig.swift */; };
 		2C7C28CC2F08D40200CF9066 /* PlantLogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C7C28CB2F08D3F900CF9066 /* PlantLogView.swift */; };
 		2C7C28D62F09B9EC00CF9066 /* PlantUploadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C7C28D52F09B9EC00CF9066 /* PlantUploadView.swift */; };
@@ -33,8 +32,6 @@
 		2CA072AB2F106749006515E5 /* ColorTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CA072952F106749006515E5 /* ColorTokens.swift */; };
 		2CA072AC2F106749006515E5 /* DSListRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CA0728F2F106749006515E5 /* DSListRow.swift */; };
 		2CA072AD2F106749006515E5 /* DSErrorState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CA0728D2F106749006515E5 /* DSErrorState.swift */; };
-		2CA072AE2F106749006515E5 /* IMPLEMENTATION_SUMMARY.md in Resources */ = {isa = PBXBuildFile; fileRef = 2CA0729C2F106749006515E5 /* IMPLEMENTATION_SUMMARY.md */; };
-		2CA072AF2F106749006515E5 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 2CA0729D2F106749006515E5 /* README.md */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -43,7 +40,8 @@
 		2C2981492F5CB8B5007EE48A /* USRegions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = USRegions.swift; sourceTree = "<group>"; };
 		2C29814D2F5CBDBF007EE48A /* RegionDiscoveryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegionDiscoveryView.swift; sourceTree = "<group>"; };
 		2C7C28B82F08D14A00CF9066 /* Plantydex.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Plantydex.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		2C7C28C72F08D1D600CF9066 /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
+		2CAA00052F5D000000000005 /* Config.debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.debug.xcconfig; sourceTree = "<group>"; };
+		2CAA00062F5D000000000006 /* Config.release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.release.xcconfig; sourceTree = "<group>"; };
 		2C7C28C92F08D3C000CF9066 /* SupabaseConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseConfig.swift; sourceTree = "<group>"; };
 		2C7C28CB2F08D3F900CF9066 /* PlantLogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlantLogView.swift; sourceTree = "<group>"; };
 		2C7C28D52F09B9EC00CF9066 /* PlantUploadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlantUploadView.swift; sourceTree = "<group>"; };
@@ -123,7 +121,8 @@
 				2CAA00032F5D000000000003 /* IdentifyFlowView.swift */,
 				2C7C28D72F09BCF600CF9066 /* PlantDetailView.swift */,
 				2C7C28D52F09B9EC00CF9066 /* PlantUploadView.swift */,
-				2C7C28C72F08D1D600CF9066 /* Config.xcconfig */,
+				2CAA00052F5D000000000005 /* Config.debug.xcconfig */,
+				2CAA00062F5D000000000006 /* Config.release.xcconfig */,
 				2C7C28CB2F08D3F900CF9066 /* PlantLogView.swift */,
 				2CAA00012F5D000000000001 /* Models */,
 				2CAA00022F5D000000000002 /* Services */,
@@ -257,9 +256,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				2C7C28C82F08D1E200CF9066 /* Config.xcconfig in Resources */,
-				2CA072AE2F106749006515E5 /* IMPLEMENTATION_SUMMARY.md in Resources */,
-				2CA072AF2F106749006515E5 /* README.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -303,7 +299,7 @@
 /* Begin XCBuildConfiguration section */
 		2C7C28C12F08D14B00CF9066 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 2C7C28C72F08D1D600CF9066 /* Config.xcconfig */;
+			baseConfigurationReference = 2CAA00052F5D000000000005 /* Config.debug.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -368,7 +364,7 @@
 		};
 		2C7C28C22F08D14B00CF9066 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 2C7C28C72F08D1D600CF9066 /* Config.xcconfig */;
+			baseConfigurationReference = 2CAA00062F5D000000000006 /* Config.release.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
